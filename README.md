@@ -4,15 +4,52 @@ A Model Context Protocol (MCP) server that provides Playwright browser automatio
 
 ## Features
 
-This MCP server exposes the following Playwright tools:
+This MCP server exposes **24 comprehensive Playwright tools** organized by category:
 
-- **playwright_navigate**: Navigate to a URL in the browser
-- **playwright_screenshot**: Capture screenshots of web pages
-- **playwright_click**: Click elements on the page
-- **playwright_fill**: Fill form inputs with text
-- **playwright_extract_text**: Extract text content from elements
-- **playwright_evaluate**: Execute custom JavaScript in the browser context
-- **playwright_close**: Close the browser instance
+### Navigation & Page Control (6 tools)
+
+- **playwright_navigate**: Navigate to URLs with custom wait conditions
+- **playwright_go_back**: Navigate back in browser history
+- **playwright_go_forward**: Navigate forward in browser history
+- **playwright_reload**: Reload the current page
+- **playwright_set_viewport**: Set custom viewport dimensions
+- **playwright_get_page_info**: Get current page URL and title
+
+### Element Interaction (8 tools)
+
+- **playwright_click**: Click elements (supports multiple buttons and click counts)
+- **playwright_fill**: Fill input fields quickly
+- **playwright_type**: Type text with keyboard simulation and delays
+- **playwright_hover**: Hover over elements
+- **playwright_select**: Select dropdown options
+- **playwright_checkbox**: Check or uncheck checkboxes
+- **playwright_drag_and_drop**: Drag and drop elements
+- **playwright_press_key**: Press keyboard keys (Enter, Escape, etc.)
+
+### Data Extraction (3 tools)
+
+- **playwright_extract_text**: Extract text from single or multiple elements
+- **playwright_get_attribute**: Get attribute values from elements
+- **playwright_evaluate**: Execute custom JavaScript and get results
+
+### Waiting & Synchronization (1 tool)
+
+- **playwright_wait_for_selector**: Wait for elements with custom timeout and state
+
+### Capture (1 tool)
+
+- **playwright_screenshot**: Capture full or partial page screenshots
+
+### Test Recording & Generation (3 tools)
+
+- **playwright_record_start**: Start recording user actions for test generation
+- **playwright_record_stop**: Stop recording actions
+- **playwright_generate_test**: Generate test scripts (Playwright/Puppeteer/Selenium in TypeScript/JavaScript/Python)
+
+### Browser Management (2 tools)
+
+- **playwright_close**: Close browser and cleanup
+- All tools support stateful browser sessions (cookies, auth, history preserved)
 
 ## 📋 Prerequisites
 
