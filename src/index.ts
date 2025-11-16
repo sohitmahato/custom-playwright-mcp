@@ -28,15 +28,51 @@ interface RecordedAction {
 let recordedActions: RecordedAction[] = [];
 let isRecording = false;
 let recordingName = "";
+let autoRecording = true; // Auto-record all actions by default
+let workflowStartTime: number | null = null;
 
 // Helper function to add recorded action
 function recordAction(action: Omit<RecordedAction, "timestamp">) {
-    if (isRecording) {
+    if (isRecording || autoRecording) {
+        // Initialize workflow start time on first action
+        if (!workflowStartTime) {
+            workflowStartTime = Date.now();
+            recordingName = recordingName || `workflow_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+        }
+
         recordedActions.push({
             ...action,
             timestamp: Date.now(),
         });
     }
+}
+
+// Helper function to auto-generate test file
+async function autoGenerateTestFile(framework: "playwright" | "puppeteer" = "playwright", language: "typescript" | "javascript" = "typescript"): Promise<string> {
+    if (recordedActions.length === 0) {
+        return "No actions to generate test from.";
+    }
+
+    let testCode = "";
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `${recordingName || `test_${timestamp}`}.spec.${language === "typescript" ? "ts" : "js"}`;
+
+    if (framework === "playwright") {
+        testCode = generatePlaywrightTest(recordedActions, language);
+    } else if (framework === "puppeteer") {
+        testCode = generatePuppeteerTest(recordedActions, language);
+    }
+
+    // Save to file
+    const testsDir = path.join(process.cwd(), "generated-tests");
+    if (!fs.existsSync(testsDir)) {
+        fs.mkdirSync(testsDir, { recursive: true });
+    }
+
+    const filePath = path.join(testsDir, fileName);
+    fs.writeFileSync(filePath, testCode);
+
+    return filePath;
 }
 
 // Tool input schemas
@@ -121,6 +157,11 @@ const GenerateTestSchema = z.object({
     fileName: z.string().describe("Output file name for the test"),
 });
 
+const GenerateWorkflowTestSchema = z.object({
+    framework: z.enum(["playwright", "puppeteer"]).optional().default("playwright").describe("Test framework (default: playwright)"),
+    language: z.enum(["typescript", "javascript"]).optional().default("typescript").describe("Language (default: typescript)"),
+});
+
 const CheckboxSchema = z.object({
     selector: z.string().describe("CSS selector of checkbox"),
     checked: z.boolean().describe("Check (true) or uncheck (false)"),
@@ -170,17 +211,21 @@ class BrowserManager {
     }
 
     async closeBrowser(): Promise<void> {
-        if (this.page) {
-            await this.page.close();
-            this.page = null;
-        }
-        if (this.context) {
-            await this.context.close();
-            this.context = null;
-        }
-        if (this.browser) {
-            await this.browser.close();
-            this.browser = null;
+        try {
+            if (this.page) {
+                await this.page.close().catch(() => { });
+                this.page = null;
+            }
+            if (this.context) {
+                await this.context.close().catch(() => { });
+                this.context = null;
+            }
+            if (this.browser) {
+                await this.browser.close().catch(() => { });
+                this.browser = null;
+            }
+        } catch (error) {
+            console.error("Error closing browser:", error);
         }
     }
 
@@ -237,6 +282,9 @@ function generatePlaywrightTest(actions: RecordedAction[], language: "typescript
                 break;
             case "waitForSelector":
                 testCode += `  await page.waitForSelector('${action.selector}');\n`;
+                break;
+            case "evaluate":
+                testCode += `  await page.evaluate(${action.script});\n`;
                 break;
             case "screenshot":
                 testCode += `  await page.screenshot({ path: '${action.value}' });\n`;
@@ -661,6 +709,25 @@ const tools: Tool[] = [
         },
     },
     {
+        name: "playwright_generate_workflow_test",
+        description: "Auto-generate a Playwright test file from the current workflow actions",
+        inputSchema: {
+            type: "object",
+            properties: {
+                framework: {
+                    type: "string",
+                    enum: ["playwright", "puppeteer"],
+                    description: "Test framework (default: playwright)",
+                },
+                language: {
+                    type: "string",
+                    enum: ["typescript", "javascript"],
+                    description: "Programming language (default: typescript)",
+                },
+            },
+        },
+    },
+    {
         name: "playwright_close",
         description: "Close the browser instance",
         inputSchema: { type: "object", properties: {} },
@@ -773,6 +840,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const { script } = EvaluateSchema.parse(args);
                 const page = await browserManager.ensurePage();
                 const result = await page.evaluate(script);
+                recordAction({ type: "evaluate", script, description: `Execute JavaScript` });
                 return {
                     content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
                 };
@@ -982,12 +1050,52 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
 
+            case "playwright_generate_workflow_test": {
+                const { framework, language } = GenerateWorkflowTestSchema.parse(args);
+
+                if (recordedActions.length === 0) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: "No actions recorded in current workflow. Perform some actions first (navigate, click, fill, etc.).",
+                            },
+                        ],
+                    };
+                }
+
+                const filePath = await autoGenerateTestFile(framework, language);
+                const testCode = framework === "playwright"
+                    ? generatePlaywrightTest(recordedActions, language)
+                    : generatePuppeteerTest(recordedActions, language);
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `✅ Workflow test generated successfully!\n\nFile: ${filePath}\nFramework: ${framework}\nLanguage: ${language}\nActions recorded: ${recordedActions.length}\n\nTest code:\n${testCode}`,
+                        },
+                    ],
+                };
+            }
+
             case "playwright_close": {
                 await browserManager.closeBrowser();
+
+                const actionsCount = recordedActions.length;
+                let message = "Browser closed successfully";
+
+                if (actionsCount > 0) {
+                    message += `\n\n📝 Note: ${actionsCount} actions were recorded during this session.\nUse 'playwright_generate_workflow_test' to create a test file from these actions before they are cleared.`;
+                }
+
                 isRecording = false;
                 recordedActions = [];
+                workflowStartTime = null;
+                recordingName = "";
+
                 return {
-                    content: [{ type: "text", text: "Browser closed successfully" }],
+                    content: [{ type: "text", text: message }],
                 };
             }
 
@@ -1008,10 +1116,35 @@ async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.error("Playwright MCP Server v2.0 running on stdio");
-    console.error("Enhanced with 24 tools including test generation");
+    console.error("Enhanced with 25 tools including test generation");
+
+    // Cleanup on process exit
+    const cleanup = async () => {
+        console.error("Cleaning up browser resources...");
+        try {
+            await browserManager.closeBrowser();
+        } catch (error) {
+            console.error("Error during cleanup:", error);
+        }
+    };
+
+    process.on('SIGINT', async () => {
+        await cleanup();
+        process.exit(0);
+    });
+
+    process.on('SIGTERM', async () => {
+        await cleanup();
+        process.exit(0);
+    });
+
+    process.on('exit', () => {
+        console.error("MCP Server shutting down");
+    });
 }
 
 main().catch((error) => {
     console.error("Fatal error:", error);
+    browserManager.closeBrowser().catch(() => { });
     process.exit(1);
 });

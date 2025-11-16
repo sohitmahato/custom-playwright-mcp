@@ -4,7 +4,17 @@ A Model Context Protocol (MCP) server that provides Playwright browser automatio
 
 ## Features
 
-This MCP server exposes **24 comprehensive Playwright tools** organized by category:
+This MCP server exposes **25 comprehensive Playwright tools** organized by category:
+
+### 🆕 Auto-Recording Feature
+
+**All actions are automatically recorded!** You can generate a complete Playwright test file from any workflow with a single command:
+
+```
+"Generate a Playwright test from my workflow"
+```
+   
+This automatically creates a test file in `generated-tests/` with all your actions. No manual recording needed!
 
 ### Navigation & Page Control (6 tools)
 
@@ -40,11 +50,12 @@ This MCP server exposes **24 comprehensive Playwright tools** organized by categ
 
 - **playwright_screenshot**: Capture full or partial page screenshots
 
-### Test Recording & Generation (3 tools)
+### Test Recording & Generation (4 tools)
 
 - **playwright_record_start**: Start recording user actions for test generation
 - **playwright_record_stop**: Stop recording actions
 - **playwright_generate_test**: Generate test scripts (Playwright/Puppeteer/Selenium in TypeScript/JavaScript/Python)
+- **playwright_generate_workflow_test**: 🆕 Auto-generate Playwright test from current workflow actions
 
 ### Browser Management (2 tools)
 
@@ -210,7 +221,25 @@ Navigate to a product page and get the price attribute from the element with cla
 
 ## 🎬 Test Generation Feature
 
-### Record → Generate → Run
+### Auto-Generate Tests (NEW!)
+
+Simply perform your workflow and generate a test:
+
+```
+Navigate to https://example.com
+Click login button
+Fill username with "test"
+Fill password with "pass"
+Click submit
+
+Generate a Playwright test from my workflow
+```
+
+Result: Complete test file in `generated-tests/workflow_TIMESTAMP.spec.ts`
+
+### Manual Recording (Original Method)
+
+Record → Generate → Run
 
 **Step 1: Start Recording**
 
