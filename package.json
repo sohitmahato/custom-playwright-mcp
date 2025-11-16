@@ -1,0 +1,33 @@
+{
+    "name": "playwright-mcp-server",
+    "version": "1.0.0",
+    "description": "Model Context Protocol server for Playwright browser automation",
+    "type": "module",
+    "main": "build/index.js",
+    "bin": {
+        "playwright-mcp-server": "./build/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc --watch",
+        "prepare": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "playwright",
+        "browser-automation",
+        "web-scraping"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.4",
+        "playwright": "^1.49.1",
+        "zod": "^3.24.1"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.56.1",
+        "@types/node": "^22.10.2",
+        "typescript": "^5.7.2"
+    }
+}
